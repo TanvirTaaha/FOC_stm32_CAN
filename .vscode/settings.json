@@ -1,0 +1,11 @@
+{
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    "ros.distro": "noetic",
+    "files.associations": {
+        "*.tcc": "cpp"
+    },
+    "explorer.autoReveal": false,
+    "editor.indentSize": "tabSize",
+    "editor.tabSize": 2
+}
