@@ -104,9 +104,9 @@ void loop()
   if (i == 5000)
   {
 #ifdef DEBUG
-    Serial.print(currentSense.getDCCurrent());
-    Serial.println("   ");
+    Serial.printf("dc_current:%f\n", currentSense.getDCCurrent());
     Serial.printf("target_velocity:%f\n", target_velocity);
+    Serial.printf("speed:%f, position:%f\n", sensor.getVelocity(), sensor.getAngle());
 #endif
     loop_can_comm();
     i = 0;
@@ -114,7 +114,7 @@ void loop()
   i++;
   // serialLoop();
   // motor.monitor();
-  setTxSpeedAndPos(2.3, 1.5);
+  setTxSpeedAndPos(sensor.getVelocity(), sensor.getAngle());
   motor.loopFOC();
   motor.move(target_velocity);
 }
