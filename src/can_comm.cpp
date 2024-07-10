@@ -3,13 +3,15 @@
 // first 4 bits from left are for motor index and next 4 bits are for msg type
 // 1010 -> mcu to motor
 // 0101 -> motor to mcu
-#define CAN_ID_FILTER_RX 0b1010
-#define CAN_ID_FILTER_TX 0b0101
+#define CAN_ID_FILTER_TX 0b1010
+#define CAN_ID_FILTER_RX 0b1111
+#define CAN_DATA_REQ_ID 0b100110 
 
 // The correct pin sequence here is: Gnd, CAN L, CAN H, 5V
 //  pass in optional shutdown and terminator pins that disable transceiver and add 120ohm resistor respectively
 SimpleCan can1(A_CAN_SHDN, A_CAN_TERM);
 SimpleCan::RxHandler can1RxHandler(8, isr_handleCanMessage);
+
 
 FDCAN_TxHeaderTypeDef TxHeader;
 uint8_t TxData[8];
@@ -21,8 +23,8 @@ uint8_t received_data_length;
 uint8_t *received_data;
 bool new_rx_data = false;
 bool new_tx_data = false;
+bool is_data_requested = false;
 float txSpeed, txPosition;
-
 
 union floats_unit64
 {
@@ -73,15 +75,17 @@ void init_CAN()
 										 ? "CAN: initialized."
 										 : "CAN: error when initializing.");
 	delay(10);
-	FDCAN_FilterTypeDef sFilterConfig;
-
 	// // Configure Rx filter
+	FDCAN_FilterTypeDef sFilterConfig;
 	sFilterConfig.IdType = FDCAN_STANDARD_ID;
 	sFilterConfig.FilterIndex = 0;
-	sFilterConfig.FilterType = FDCAN_FILTER_MASK; //*!< Classic filter: FilterID1 = filter, FilterID2 = mask            */
+	sFilterConfig.FilterType = FDCAN_FILTER_DUAL; //*!< Classic filter: FilterID1 = filter, FilterID2 = mask            */
 	sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-	sFilterConfig.FilterID1 = 1 << 5; // filter
-	sFilterConfig.FilterID2 = 1 << 5; // mask
+	// sFilterConfig.FilterID1 = MOTOR_INDEX << 4 | CAN_ID_FILTER_RX;
+	sFilterConfig.FilterID1 = MOTOR_INDEX << 4 | CAN_ID_FILTER_RX;
+	sFilterConfig.FilterID2 = CAN_DATA_REQ_ID; // For the request (low priority)
+	// sFilterConfig.FilterID1 = 0; // filter
+	// sFilterConfig.FilterID2 = 0; // mask
 
 	Serial.println("Setting filter");
 	delay(10);
@@ -92,6 +96,8 @@ void init_CAN()
 	Serial.println(can1.start() == HAL_OK
 										 ? "CAN: started."
 										 : "CAN: error when starting.");
+
+
 	delay(10);
 }
 
@@ -100,7 +106,8 @@ void isr_handleCanMessage(FDCAN_RxHeaderTypeDef rxHeader, uint8_t *rxData)
 	received_data_length = dlcToLength(rxHeader.DataLength);
 	received_can_id = rxHeader.Identifier;
 	received_data = rxData;
-	new_rx_data = true;
+	is_data_requested = received_can_id == CAN_DATA_REQ_ID;
+	new_rx_data = !is_data_requested; // if the code reached here of course there is a new data or a request
 	digitalToggle(LED_BUILTIN);
 }
 
@@ -108,6 +115,7 @@ void isr_handleInterrupt(void) { is_pressed = true; }
 
 void loop_can_comm()
 {
+	// receiving
 	if (new_rx_data)
 	{
 #ifdef DEBUG
@@ -124,17 +132,24 @@ void loop_can_comm()
 			// Serial.print("]=");
 			Serial.printf("%c ", received_data[byte_index]);
 		}
+		// Serial.printf("%f", *(float *)received_data);
 		Serial.println();
-		new_rx_data = false; // just to indicate this data has been printed
 #endif
+		new_rx_data = false;
 		target_velocity = *((float *)received_data);
 	}
-
-	if (new_tx_data)
+	// sending
+	if (is_data_requested && new_tx_data)
 	{
 		new_tx_data = false;
+		is_data_requested = false;
 		sendCanMessage();
 	}
+#ifdef DEBUG
+	else {
+		Serial.printf("Not sending: new_tx_data:%d, is_data_requested:%d\n", new_tx_data, is_data_requested);
+	}
+#endif
 }
 
 void ButtonDown()
@@ -176,7 +191,10 @@ void setTxSpeedAndPos(float speed, float position)
 
 bool sendCanMessage()
 {
-	TxHeader.Identifier = 2 << 4 | CAN_ID_FILTER_TX;
+#ifdef DEBUG
+	Serial.printf("Sending CAN: speed:%f, position:%f\n", txSpeed, txPosition);
+#endif
+	TxHeader.Identifier = MOTOR_INDEX << 4 | CAN_ID_FILTER_TX;
 	TxHeader.IdType = FDCAN_STANDARD_ID;
 	TxHeader.TxFrameType = FDCAN_DATA_FRAME;
 	TxHeader.DataLength = FDCAN_DLC_BYTES_8;
@@ -185,8 +203,7 @@ bool sendCanMessage()
 	TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
 	TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
 	TxHeader.MessageMarker = 0;
-	
-	
+
 	byte_coverter.floats[0] = txSpeed;
 	byte_coverter.floats[1] = txPosition;
 

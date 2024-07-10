@@ -60,11 +60,11 @@ void setup()
   // limit the voltage to be set to the motor
   // start very low for high resistance motors
   // currnet = resistance * voltage, so try to be well under 1Amp
-  motor.voltage_sensor_align = 3;
-  motor.voltage_limit = 1; // [V]
+  motor.voltage_sensor_align = 4;
+  motor.voltage_limit = 4; // [V]
   motor.velocity_limit = 10;
   // motor.voltage_sensor_align = 1;
-  motor.current_limit = 2;
+  motor.current_limit = 4;
 
   // open loop control config
   // motor.phase_resistance = 0.8;
@@ -88,8 +88,8 @@ void setup()
   currentSense.init();
   motor.linkCurrentSense(&currentSense);
 
-  motor.zero_electric_angle = 2.09; // rad
-  motor.sensor_direction = Direction ::CCW;
+  // motor.zero_electric_angle = 2.09; // rad
+  // motor.sensor_direction = Direction ::CCW;
 
   // currentSense.skip_align = true;
   // currentSense.driverAlign(motor.voltage_sensor_align);
@@ -104,17 +104,22 @@ void loop()
   if (i == 5000)
   {
 #ifdef DEBUG
-    Serial.printf("dc_current:%f\n", currentSense.getDCCurrent());
-    Serial.printf("target_velocity:%f\n", target_velocity);
-    Serial.printf("speed:%f, position:%f\n", sensor.getVelocity(), sensor.getAngle());
-#endif
+    if (new_rx_data || is_data_requested)
+    {
+      Serial.printf("dc_current:%f\n", currentSense.getDCCurrent());
+      Serial.printf("target_velocity:%f\n", target_velocity);
+      Serial.printf("received_can_id:%d\n", received_can_id);
+      Serial.printf("speed:%f, position:%f\n", sensor.getVelocity(), sensor.getAngle());
     loop_can_comm();
+    }
+#endif
     i = 0;
   }
   i++;
   // serialLoop();
   // motor.monitor();
-  setTxSpeedAndPos(sensor.getVelocity(), sensor.getAngle());
+  // setTxSpeedAndPos(sensor.getVelocity(), sensor.getAngle());
+  setTxSpeedAndPos(target_velocity, sensor.getAngle());
   motor.loopFOC();
   motor.move(target_velocity);
 }
