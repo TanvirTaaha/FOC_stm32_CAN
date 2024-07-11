@@ -1,11 +1,5 @@
 #include "motor.h"
 
-// first 4 bits from left are for motor index and next 4 bits are for msg type
-// 1010 -> mcu to motor
-// 0101 -> motor to mcu
-#define CAN_ID_FILTER_TX 0b1010
-#define CAN_ID_FILTER_RX 0b1111
-#define CAN_DATA_REQ_ID 0b100110 
 
 // The correct pin sequence here is: Gnd, CAN L, CAN H, 5V
 //  pass in optional shutdown and terminator pins that disable transceiver and add 120ohm resistor respectively
@@ -145,11 +139,6 @@ void loop_can_comm()
 		is_data_requested = false;
 		sendCanMessage();
 	}
-#ifdef DEBUG
-	else {
-		Serial.printf("Not sending: new_tx_data:%d, is_data_requested:%d\n", new_tx_data, is_data_requested);
-	}
-#endif
 }
 
 void ButtonDown()

@@ -110,9 +110,9 @@ void loop()
       Serial.printf("target_velocity:%f\n", target_velocity);
       Serial.printf("received_can_id:%d\n", received_can_id);
       Serial.printf("speed:%f, position:%f\n", sensor.getVelocity(), sensor.getAngle());
-    loop_can_comm();
     }
 #endif
+    loop_can_comm();
     i = 0;
   }
   i++;

@@ -1,12 +1,22 @@
 #ifndef _MOTOR_H_
 #define _MOTOR_H_
-// #define DEBUG
+#define DEBUG
 #include <Arduino.h>
 #include <SimpleFOC.h>
 #include <SimpleCan.h>
 
 
-#define MOTOR_INDEX 3
+#define MOTOR_INDEX 2
+
+
+// first 4 bits from left are for motor index and next 4 bits are for msg type
+// 1010 -> mcu to motor
+// 0101 -> motor to mcu
+#define CAN_ID_FILTER_TX 0b1010
+#define CAN_ID_FILTER_RX 0b1111
+// #define CAN_DATA_REQ_ID 0b101011
+#define CAN_DATA_REQ_ID 1 << 6
+
 
 void setup_can_comm(void);
 void loop_can_comm(void);
